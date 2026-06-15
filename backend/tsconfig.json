@@ -10,6 +10,7 @@
     "module": "commonjs",
     "target": "es2020",
     "types": [],
+    "typeRoots": ["./src/types", "./node_modules/@types"],
     // For nodejs:
     // "lib": ["esnext"],
     // "types": ["node"],
