@@ -29,6 +29,7 @@ async function fetchUserInfo(handle: string): Promise<CFUser> {
   try {
     const { data } = await axios.get<CFApiResponse<CFUser[]>>(
       `${CF_BASE_URL}/user.info?handles=${handle}`,
+      { timeout: 10000 },
     );
 
     const user = data.result?.[0];
@@ -149,6 +150,7 @@ function computeSubmissionStats(
   };
 
   for (const { verdict } of submissions) {
+    stats.totalSubmissions++;
     switch (verdict) {
       case "OK":
         stats.accepted++;
@@ -175,12 +177,14 @@ function computeSubmissionStats(
   return stats;
 }
 
-// main things controller called 
-export async function getCodeForcesStats(handle: string): Promise<CodeforcesStats>{
+// main things controller called
+export async function getCodeForcesStats(
+  handle: string,
+): Promise<CodeforcesStats> {
   const [cfUser, ratingChange, submission] = await Promise.all([
     fetchUserInfo(handle),
     fetchUserRating(handle),
-    fetchUserStatus(handle)
+    fetchUserStatus(handle),
   ]);
 
   return {
