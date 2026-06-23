@@ -46,7 +46,7 @@ export interface CodeforcesRatingPoint {
 }
 
 export interface CodeforcesSubmissionStats {
-  totalSubmission: number;
+  totalSubmissions: number;
   accepted: number;
   wrongAnswer: number;
   timeLimitExceeded: number;
@@ -61,4 +61,37 @@ export interface CodeforcesStats {
   solvedCount: number;
   ratingHistory: CodeforcesRatingPoint[];
   submissionStats: CodeforcesSubmissionStats;
+}
+
+export interface LeetcodeDifficultyBreakdown {
+  easy: number;
+  medium: number;
+  hard: number;
+  total: number;
+}
+
+export interface LeetcodeRanking {
+  globalRanking: number | null;
+  reputation: number;
+}
+
+export interface LeetcodeContestStats {
+  rating: number | null;
+  globalRanking: number | null;
+  attendedContest: number;
+  topPercentage: number | null;
+}
+
+export interface LeetcodeRecentSubmission {
+  title: string;
+  titleSlug: string;
+  timestamp: number;
+}
+
+export interface LeetcodeStats {
+  username: string;
+  solved: LeetcodeDifficultyBreakdown;
+  ranking: LeetcodeRanking;
+  contest: LeetcodeContestStats | null;
+  recentSubmissions: LeetcodeRecentSubmission[];
 }

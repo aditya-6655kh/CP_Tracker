@@ -42,7 +42,7 @@ export interface LeetcodeDifficultyBreakdown {
   easy: number;
   medium: number;
   hard: number;
-  all: number;
+  total: number;
 }
 
 export interface LeetcodeRanking {

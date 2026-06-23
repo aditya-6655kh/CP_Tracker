@@ -5,6 +5,7 @@ import type { Profile } from "../types";
 
 const ProfilePage: React.FC = () => {
     const [profile, setProfile] = useState<Profile | null>(null);
+    const [leetcodeHandle, setLeetcodeHandle] = useState('');
     const [loading, setLoading] = useState(true);
     const [cfHandle, setCfHandle] =useState("");
     const [saving, setSaving] = useState(false);
@@ -18,6 +19,7 @@ const ProfilePage: React.FC = () => {
                 if(data){
                     setProfile(data);
                     setCfHandle(data.cfHandle ?? '');
+                    setLeetcodeHandle(data.leetcodeHandle ?? '');
                 }
             }finally{
                 setLoading(false);
@@ -33,7 +35,7 @@ const ProfilePage: React.FC = () => {
         setSaving(true);
 
         try{
-            const updated = await updateProfile({cfHandle});
+            const updated = await updateProfile({ cfHandle, leetcodeHandle });
             setProfile(updated);
             setSuccess(true);
             setTimeout(() => setSuccess(false), 3000);
@@ -48,7 +50,7 @@ const ProfilePage: React.FC = () => {
     if(loading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
-                <p className="font-mono text-sm text-slate-500 animate-pulse">Loading</p>
+                <p className="font-mono text-sm text-slate-500 animate-pulse">Loading Profile...</p>
             </div>
         );
     }
@@ -80,13 +82,13 @@ const ProfilePage: React.FC = () => {
           <div>
             <label className="block font-mono text-xs text-slate-500 mb-1.5">
               LeetCode Handle
-              <span className="ml-2 text-slate-600">(coming soon)</span>
             </label>
             <input
               type="text"
-              disabled
+              value={leetcodeHandle}
+              onChange={(e) => setLeetcodeHandle(e.target.value)}
               placeholder="e.g. neal_wu"
-              className="w-full bg-[#0A0A0F] border border-[#2D2D3F] rounded-lg px-3 py-2.5 text-sm font-mono text-white placeholder-slate-600 opacity-40 cursor-not-allowed"
+              className="w-full bg-[#0A0A0F] border border-[#2D2D3F] rounded-lg px-3 py-2.5 text-sm font-mono text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors "
             />
           </div>
 

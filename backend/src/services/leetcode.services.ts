@@ -147,15 +147,16 @@ function transformDifficultyBreakdown(
     easy: 0,
     medium: 0,
     hard: 0,
-    all: 0,
+    total: 0,
   };
 
   for (const sub of acSubmissionNum) {
     if (sub.difficulty === "Easy") breakDown.easy = sub.count;
     if (sub.difficulty === "Medium") breakDown.medium = sub.count;
-    if (sub.difficulty === "All") breakDown.all = sub.count;
     if (sub.difficulty === "Hard") breakDown.hard = sub.count;
   }
+
+  breakDown.total = breakDown.easy + breakDown.medium + breakDown.hard;
 
   return breakDown;
 }
