@@ -3,6 +3,9 @@ import { TrendingUp, Award, CheckCircle2, Code2, XCircle } from "lucide-react";
 import type { CodeforcesStats } from "../../types";
 import { getRankColor } from "../../utilities/codeforces";
 import LinkHandlePrompt from "./LinkHandlePrompt";
+import RatingChart from "./RatingChart";
+import ActivityHeatmap from "./ActivityHeatmap";
+import StreakCard from "./StreakCard";
 
 interface Props {
   handle: string | null;
@@ -47,7 +50,7 @@ const CodeforcesSection: React.FC<Props> = ({
     );
   }
 
-  const { userInfo, solvedCount, submissionStats } = stats;
+  const { userInfo, solvedCount, submissionStats, ratingHistory, streak, codeforcesActivity } = stats;
   const rankColor = getRankColor(userInfo?.rank ?? null);
   const maxRankColor = getRankColor(userInfo?.maxRank ?? null);
   const total = submissionStats?.totalSubmissions ?? 0;
@@ -177,6 +180,10 @@ const CodeforcesSection: React.FC<Props> = ({
             );
           })}
         </div>
+
+        <div className="mt-4"><StreakCard streak={streak}/></div>
+        <div className="mt-4"><RatingChart ratingHistory={ratingHistory}/></div>
+        <div className="mt-4"><ActivityHeatmap activity={codeforcesActivity}/></div>
       </div>
     </div>
   );

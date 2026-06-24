@@ -8,6 +8,8 @@ import {
   CodeforcesUserInfo,
   CodeforcesRatingPoint,
   CodeforcesSubmissionStats,
+  CodeforcesActivityDay,
+  CodeforcesStreak,
 } from "../types/codeforces.types";
 import { resourceUsage } from "node:process";
 
@@ -135,6 +137,72 @@ function computeSolvedCount(submissions: CFSubmission[]): number {
   return solvedSet.size;
 }
 
+function computeActivityMap(
+  submissions: CFSubmission[],
+): Record<string, number> {
+  const map: Record<string, number> = {};
+
+  for (const sub of submissions) {
+    const date = new Date(sub.creationTimeSeconds * 1000)
+      .toISOString()
+      .slice(0, 10);
+    map[date] = (map[date] || 0) + 1;
+  }
+
+  return map;
+}
+
+function computeStreak(activityMap: Record<string, number>): CodeforcesStreak {
+  const dates = Object.keys(activityMap).sort();
+
+  if (dates.length === 0) return { current: 0, max: 0 };
+
+  // compute max streak
+  let maxStreak = 1;
+  let runningStreak = 1;
+
+  for (let i = 1; i < dates.length; i++) {
+    let prevDate = new Date(dates[i - 1]!);
+    let currDate = new Date(dates[i]!);
+
+    let dayGap = Math.round(
+      (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24),
+    );
+
+    runningStreak = dayGap === 1 ? runningStreak + 1 : 1;
+    maxStreak = Math.max(maxStreak, runningStreak);
+  }
+
+  // compute current streak
+  const activeDateSet = new Set(dates);
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  const todayStr = today.toISOString().slice(0, 10);
+  const yesterdayStr = new Date(today.getTime() - 1000 * 60 * 60 * 24)
+    .toISOString()
+    .slice(0, 10);
+
+  let currentStreak = 0;
+  let cursor: Date | null = null;
+
+  if (activeDateSet.has(todayStr)) {
+    cursor = today;
+  } else if (activeDateSet.has(yesterdayStr)) {
+    cursor = new Date(today.getTime() - 1000 * 60 * 60 * 24);
+  }
+
+  while (cursor) {
+    let cursorStr = cursor.toISOString().slice(0, 10);
+    if (!activeDateSet.has(cursorStr)) break;
+
+    currentStreak++;
+    cursor = new Date(cursor.getTime() - 1000 * 60 * 60 * 24);
+  }
+
+  return { current: currentStreak, max: maxStreak };
+}
+
 function computeSubmissionStats(
   submissions: CFSubmission[],
 ): CodeforcesSubmissionStats {
@@ -187,10 +255,19 @@ export async function getCodeForcesStats(
     fetchUserStatus(handle),
   ]);
 
+  const activityMap = computeActivityMap(submission);
+  const activity = Object.entries(activityMap).map(([date, count]) => ({
+    date,
+    count,
+  }));
+  const streak = computeStreak(activityMap);
+
   return {
     userInfo: transformUserInfo(cfUser),
     solvedCount: computeSolvedCount(submission),
     ratingHistory: transformRatingHistory(ratingChange),
     submissionStats: computeSubmissionStats(submission),
+    codeforcesActivity: activity,
+    streak: streak,
   };
 }

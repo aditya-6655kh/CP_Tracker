@@ -56,11 +56,23 @@ export interface CodeforcesSubmissionStats {
   other: number;
 }
 
+export interface CodeforcesActivityDay{
+  date: string;
+  count: number;
+}
+
+export interface CodeforcesStreak{
+  current: number;
+  max: number;
+}
+
 export interface CodeforcesStats {
   userInfo: CodeforcesUserInfo;
   solvedCount: number;
   ratingHistory: CodeforcesRatingPoint[];
   submissionStats: CodeforcesSubmissionStats;
+  codeforcesActivity: CodeforcesActivityDay[];
+  streak: CodeforcesStreak;
 }
 
 export interface LeetcodeDifficultyBreakdown {

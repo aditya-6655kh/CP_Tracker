@@ -49,6 +49,18 @@ export interface CFSubmission {
   memoryConsumedBytes: number;
 }
 
+export interface CodeforcesActivityDay{
+  date: string;
+  count: number;
+}
+
+export interface CodeforcesStreak{
+  current: number;
+  max: number;
+}
+
+
+
 // ---------------------------------------------------------------------------
 // Processed types (what your API returns to the frontend)
 // These are intentionally decoupled from the raw CF shapes above.
@@ -88,4 +100,6 @@ export interface CodeforcesStats {
   solvedCount: number;
   ratingHistory: CodeforcesRatingPoint[];
   submissionStats: CodeforcesSubmissionStats;
+  codeforcesActivity: CodeforcesActivityDay[];
+  streak: CodeforcesStreak;
 }
