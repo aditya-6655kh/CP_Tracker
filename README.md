@@ -26,7 +26,7 @@ Built as a portfolio project to demonstrate production-quality backend architect
 - **LeetCode** — solved count by difficulty, global ranking, contest rating, recent submissions (via internal GraphQL endpoint)
 - **GeeksforGeeks** — intentionally not integrated. See [`ARCHITECTURE_DECISIONS.md`](./ARCHITECTURE_DECISIONS.md) for reasoning.
 
-### Phase 3 — Analytics ✅
+### Phase 3 — Analytics (Planned)
 - Codeforces rating history graph (Recharts line chart)
 - Codeforces activity heatmap (GitHub-style, last 6 months)
 - Codeforces current + max streak tracking
