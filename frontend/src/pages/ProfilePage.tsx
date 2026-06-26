@@ -1,33 +1,22 @@
 import React, {useState, useEffect} from "react";
 import { CheckCircle2 } from "lucide-react";
-import { getProfile, updateProfile } from "../api/profile.api";
-import type { Profile } from "../types";
+import { updateProfile } from "../api/profile.api";
+import { useProfile } from "../context/ProfileContext";
 
 const ProfilePage: React.FC = () => {
-    const [profile, setProfile] = useState<Profile | null>(null);
+    const {profile, loading: profileLoading, refetch} = useProfile()
     const [leetcodeHandle, setLeetcodeHandle] = useState('');
-    const [loading, setLoading] = useState(true);
     const [cfHandle, setCfHandle] =useState("");
     const [saving, setSaving] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState('');
 
     useEffect(() => {
-        const load = async () => {
-            try{
-                const data = await getProfile();
-                if(data){
-                    setProfile(data);
-                    setCfHandle(data.cfHandle ?? '');
-                    setLeetcodeHandle(data.leetcodeHandle ?? '');
-                }
-            }finally{
-                setLoading(false);
-            }
-        };
-
-        load();
-    }, []);
+      if(profile){
+        setCfHandle(profile.cfHandle ?? '');
+        setLeetcodeHandle(profile.leetcodeHandle ?? '');
+      }
+    }, [profile]);
 
     const handleSave = async () => {
         setError('');
@@ -35,8 +24,8 @@ const ProfilePage: React.FC = () => {
         setSaving(true);
 
         try{
-            const updated = await updateProfile({ cfHandle, leetcodeHandle });
-            setProfile(updated);
+            await updateProfile({ cfHandle, leetcodeHandle });
+            await refetch();
             setSuccess(true);
             setTimeout(() => setSuccess(false), 3000);
         }catch(err : any){
@@ -47,7 +36,7 @@ const ProfilePage: React.FC = () => {
         }
     }
 
-    if(loading) {
+    if(profileLoading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <p className="font-mono text-sm text-slate-500 animate-pulse">Loading Profile...</p>
