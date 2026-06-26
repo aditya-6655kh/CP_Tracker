@@ -1,11 +1,14 @@
 import React from "react";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ProfileProvider } from "./context/ProfileContext";
 import DashboardLayout from "./components/layouts/DashboardLayout";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import ProfilePage from "./pages/ProfilePage";
+import CodeforcesPage from "./pages/CodeforcesPage";
+import LeetcodePage from "./pages/LeetcodePage";
 
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { token, isLoading } = useAuth();
@@ -43,11 +46,15 @@ const AppRoutes: React.FC = () => (
     <Route
       element={
         <PrivateRoute>
-          <DashboardLayout />
+          <ProfileProvider>
+            <DashboardLayout />
+          </ProfileProvider>
         </PrivateRoute>
       }
     >
       <Route path="/dashboard" element={<DashboardPage />} />
+      <Route path="/codeforces" element={<CodeforcesPage />} />
+      <Route path="/leetcode" element={<LeetcodePage />} />
       <Route path="/profile" element={<ProfilePage />} />
     </Route>
 

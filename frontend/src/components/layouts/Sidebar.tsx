@@ -1,10 +1,12 @@
 import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, User, LogOut, Trophy } from "lucide-react";
+import { LayoutDashboard, User, LogOut, Trophy, Code2, ListChecks } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
 const navItems = [
-  { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
+  { label: "Overview", to: "/dashboard", icon: LayoutDashboard },
+  { label: "Codeforces", to: "/codeforces", icon: Code2 },
+  { label: "Leetcode", to: "/leetcode", icon: ListChecks },
   { label: "Profile", to: "/profile", icon: User },
 ];
 
