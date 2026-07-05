@@ -17,16 +17,27 @@ This document records the reasoning behind specific engineering tradeoffs made i
 
 ---
 
-## 2. LeetCode activity heatmap and streak tracking were scoped out
+## 2. LeetCode activity heatmap and streak tracking — revisited, and implemented
 
-**Decision:** Activity heatmap and streak tracking (Phase 3) are Codeforces-only.
+**Original assumption (later corrected):** LeetCode's public GraphQL endpoint (`recentAcSubmissionList`) only exposes roughly the last 20 accepted submissions, with no pagination and no date-range query — this was initially assumed to make an accurate activity heatmap or streak impossible without session-cookie auth.
 
-**Why:**
-- LeetCode's public GraphQL endpoint (`recentAcSubmissionList`) only exposes roughly the last 20 accepted submissions, with no pagination and no date-range query.
-- This is nowhere near enough data to reconstruct an accurate 6-month activity calendar or compute a reliable streak — for an active user it might cover only the last few days; for a less active user it might span months, with no way to tell which.
-- Building the feature anyway would mean shipping a UI element that *looks* broken or sparse for most users, undermining the polish of an otherwise accurate dashboard.
+**What changed:** Further investigation surfaced a separate, also-public, no-auth field: `matchedUser.userCalendar`, queried with a `year` argument, returning `submissionCalendar` (a full year of `{ unixTimestamp: count }` data, JSON-encoded as a string), plus LeetCode's own `streak` and `totalActiveDays` fields directly. This is distinct from `recentAcSubmissionList` and isn't subject to the same 20-item cap — it's the same field several public community tools (e.g. LeetCodeWrapped) rely on.
 
-**What would change this:** LeetCode does have a richer activity calendar on their own logged-in profile page, but accessing it requires session cookies / undocumented endpoints — the same fragility and ToS concerns that ruled out GFG.
+**Current implementation:** Activity heatmap and streak tracking are now live for both Codeforces and LeetCode. For LeetCode, the current and previous calendar years are fetched in parallel and merged, so a rolling 6-month window that crosses a Jan 1 boundary is still accurate.
+
+**Known caveat:** LeetCode's `streak` field is trusted as-is from their API rather than recomputed from the raw calendar. Their internal streak logic may not follow the exact same "consecutive calendar day" rule used for the Codeforces streak calculation in this project, so the two numbers aren't guaranteed to be perfectly apples-to-apples in edge cases.
+
+**Lesson worth keeping in mind:** the original scoping decision here was made based on one specific field's limitation (`recentAcSubmissionList`), without fully mapping out what else the same public API surface exposed. Worth checking assumptions like this against the actual schema before ruling a feature out, in general.
+
+---
+
+## 2a. LeetCode topic-wise analysis is still scoped out (unlike activity/streak)
+
+**Decision:** Topic-wise analysis and weak-area detection (Phase 4) remain Codeforces-only, even though activity/streak turned out to be feasible for LeetCode.
+
+**Why this is a different situation:** `submissionCalendar` only provides `{ date: count }` — it does not indicate which problems or tags were involved on a given day. Reconstructing tag-level accuracy would require the full list of submitted problems with their tags attached, which LeetCode does not expose through any public, no-auth endpoint found so far. The `problemsetQuestionList` query that includes tags requires session-cookie authentication (`LEETCODE_SESSION`), which reintroduces the same fragility/ToS tradeoff that ruled out GFG.
+
+**What would change this:** If session-based auth becomes acceptable for this project later, tag-level LeetCode analysis would be technically possible — but it would need its own explicit decision about credential handling and risk, not a silent addition alongside the public-API-only features.
 
 ---
 
