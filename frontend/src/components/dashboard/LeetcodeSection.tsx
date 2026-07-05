@@ -1,13 +1,10 @@
 import React from "react";
-import {
-  ExternalLink,
-  Trophy,
-  Target,
-  ListChecks,
-} from "lucide-react";
+import { ExternalLink, Trophy, Target, ListChecks } from "lucide-react";
 import type { LeetcodeStats } from "../../types";
 import { formatRelativeTime } from "../../utilities/time";
 import LinkHandlePrompt from "./LinkHandlePrompt";
+import ActivityHeatmap from "./ActivityHeatmap";
+import StreakCard from "./StreakCard";
 
 interface Props {
   handle: string | null;
@@ -58,7 +55,15 @@ const LeetcodeSection: React.FC<Props> = ({
     );
   }
 
-  const { solved, ranking, contest, recentSubmissions, username } = stats;
+  const {
+    solved,
+    ranking,
+    contest,
+    recentSubmissions,
+    username,
+    activity,
+    streak,
+  } = stats;
   const difficulties = [
     { key: "easy" as const, label: "Easy", value: solved?.easy ?? 0 },
     { key: "medium" as const, label: "Medium", value: solved?.medium ?? 0 },
@@ -186,6 +191,13 @@ const LeetcodeSection: React.FC<Props> = ({
           </div>
         </div>
       )}
+
+      <div className="mt-4">
+        <StreakCard streak={{ current: streak.current, max: streak.current }} />
+      </div>
+      <div className="mt-4">
+        <ActivityHeatmap activity={activity} />
+      </div>
     </div>
   );
 };

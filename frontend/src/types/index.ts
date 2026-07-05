@@ -100,10 +100,22 @@ export interface LeetcodeRecentSubmission {
   timestamp: number;
 }
 
+export interface LeetcodeActivityDay{
+  date: string;
+  count: number;
+}
+
+export interface LeetcodeStreak{
+  current: number;
+  totalActiveDays: number;
+}
+
 export interface LeetcodeStats {
   username: string;
   solved: LeetcodeDifficultyBreakdown;
   ranking: LeetcodeRanking;
   contest: LeetcodeContestStats | null;
   recentSubmissions: LeetcodeRecentSubmission[];
+  activity: LeetcodeActivityDay[];
+  streak: LeetcodeStreak;
 }
