@@ -27,10 +27,9 @@ Built as a portfolio project to demonstrate production-quality backend architect
 - **GeeksforGeeks** — intentionally not integrated. See [`ARCHITECTURE_DECISIONS.md`](./ARCHITECTURE_DECISIONS.md) for reasoning.
 
 ### Phase 3 — Analytics ✅
-- Codeforces rating history graph (Recharts line chart)
-- Codeforces activity heatmap (GitHub-style, last 6 months)
-- Codeforces current + max streak tracking
-- LeetCode activity/streak intentionally scoped out — see decisions doc
+- Codeforces and Leetcode rating history graph (Recharts line chart)
+- Codeforces and Leetcode activity heatmap (GitHub-style, last 6 months)
+- Codeforces and Leetcode current + max streak tracking
 
 ### Phase 4 — Intelligence Layer (Planned)
 - Topic-wise weak area detection
