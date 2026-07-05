@@ -36,6 +36,22 @@ export interface LCRecentSubmission {
   timestamp: string;
 }
 
+export interface LCUserCalendar{
+  streak: number;
+  totalActiveDays: number;
+  submissionCalendar: string;
+}
+
+export interface LeetcodeActivityDay{
+  date: string;
+  count: number;
+}
+
+export interface LeetcodeStreak{
+  current: number;
+  totalActiveDays: number;
+}
+
 // processed types
 
 export interface LeetcodeDifficultyBreakdown {
@@ -69,4 +85,6 @@ export interface LeetcodeStats {
   ranking: LeetcodeRanking;
   contest: LeetcodeContestStats | null; // null if user never joined a contest
   recentSubmissions: LeetcodeRecentSubmission[];
+  activity: LeetcodeActivityDay[];
+  streak: LeetcodeStreak;
 }

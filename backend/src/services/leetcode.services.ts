@@ -6,6 +6,8 @@ import type {
   LCContestRating,
   LCRecentSubmission,
   LeetcodeStats,
+  LCUserCalendar,
+  LeetcodeActivityDay,
 } from "../types/leetcode.types";
 
 const LEETCODE_GRAPHQL_ENDPOINT = "https://leetcode.com/graphql";
@@ -72,6 +74,16 @@ const RECENT_SUBMISSIONS_QUERY = `
     }
   }
 `;
+
+const USER_CALENDAR_QUERY = `query userProfileCalendar($username: String!, $year: Int!) {
+  matchedUser(username: $username) {
+    userCalendar(year: $year) {
+      streak
+      totalActiveDays
+      submissionCalendar
+    }
+  }
+}`;
 
 async function fetchUserProfile(username: string): Promise<LCMatchedUser> {
   try {
@@ -140,6 +152,27 @@ async function fetchRecentSubmission(
   }
 }
 
+async function fetchUserCalendar(
+  username: string,
+  year: number,
+): Promise<LCUserCalendar | null> {
+  try {
+    const { data } = await axios.post<
+      LCGraphQLResponse<{
+        matchedUser: { userCalendar: LCUserCalendar } | null;
+      }>
+    >(
+      LEETCODE_GRAPHQL_ENDPOINT,
+      { query: USER_CALENDAR_QUERY, variables: { username, year } },
+      { headers: LC_HEADERS, timeout: 10000 },
+    );
+
+    return data.data?.matchedUser?.userCalendar ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function transformDifficultyBreakdown(
   acSubmissionNum: LCMatchedUser["submitStats"]["acSubmissionNum"],
 ): LeetcodeDifficultyBreakdown {
@@ -161,14 +194,47 @@ function transformDifficultyBreakdown(
   return breakDown;
 }
 
+function transformActivity(
+  calendars: (LCUserCalendar | null)[],
+): LeetcodeActivityDay[] {
+  const merged: Record<string, number> = {};
+
+  for (const cal of calendars) {
+    if (!cal?.submissionCalendar) continue;
+
+    const parsed: Record<string, number> = JSON.parse(cal.submissionCalendar);
+
+    for (const [unixSeconds, count] of Object.entries(parsed)) {
+      const date = new Date(Number(unixSeconds) * 1000)
+        .toISOString()
+        .slice(0, 10);
+      merged[date] = (merged[date] ?? 0) + count;
+    }
+  }
+
+  return Object.entries(merged).map(([date, count]) => ({ date, count }));
+}
+
 export async function getLeetcodeStats(
   username: string,
 ): Promise<LeetcodeStats> {
-  const [profile, contestRanking, recentSubmission] = await Promise.all([
+  const currentYear = new Date().getFullYear();
+
+  const [
+    profile,
+    contestRanking,
+    recentSubmission,
+    currentYearCal,
+    prevYearCal,
+  ] = await Promise.all([
     fetchUserProfile(username),
     fetchContestRating(username),
     fetchRecentSubmission(username),
+    fetchUserCalendar(username, currentYear),
+    fetchUserCalendar(username, currentYear - 1),
   ]);
+
+  const activity = transformActivity([prevYearCal, currentYearCal]);
 
   return {
     username: profile.username,
@@ -191,7 +257,11 @@ export async function getLeetcodeStats(
       titleSlug: sub.titleSlug,
       timestamp: Number(sub.timestamp),
     })),
+
+    activity,
+    streak: {
+      current: currentYearCal?.streak ?? 0,
+      totalActiveDays: currentYearCal?.totalActiveDays ?? 0,
+    },
   };
 }
-
-
