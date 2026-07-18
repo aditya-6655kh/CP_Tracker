@@ -5,7 +5,7 @@ interface Props {
   activity: CodeforcesActivityDay[];
 }
 
-const DAYS_TO_SHOW = 182;
+const DAYS_TO_SHOW = 365;
 
 function getColor(count: number): string {
   if (count === 0) return "#1A1A24";
