@@ -111,3 +111,36 @@ This document records the reasoning behind specific engineering tradeoffs made i
 **Why:**
 - Atomic — avoids a race condition where two near-simultaneous requests could both see "no profile exists" and attempt to create duplicate rows.
 - Simpler code path: one Prisma call instead of a conditional check followed by two possible operations.
+
+---
+
+## 10. Two-layer caching: backend TTL cache + frontend session cache
+
+**Decision:** Stats are cached at two independent layers — a backend in-memory `Map`-based TTL cache (5 minutes, keyed by platform handle) and a frontend `StatsContext` that caches fetched data for the browser session (reset on full page reload).
+
+**Why two layers instead of one:**
+- The backend cache exists to protect the *external* relationship — Codeforces and LeetCode could rate-limit or temporarily block requests if hit too frequently. This matters regardless of which user or browser tab is asking, so it lives server-side, keyed by handle (not by user), meaning two different users linking the same public handle share one cache entry.
+- The frontend cache exists to avoid *redundant round-trips during a single session* — without it, navigating from Overview to the Codeforces page and back would refetch identical data three times in under a second, purely from page-to-page navigation, even though the backend cache would technically serve those instantly too. Avoiding the network round-trip entirely (not just avoiding the external API call) makes in-app navigation feel instant.
+
+**Why in-memory `Map` and not Redis:** the app runs on a single server instance; a `Map` with TTL expiry is sufficient and requires no new infrastructure or dependency. This would need to change if the backend were ever horizontally scaled across multiple instances, since each instance would otherwise maintain its own inconsistent cache.
+
+**Why the two layers must bypass together:** the manual "Refresh" button's whole purpose is to show genuinely fresh data on demand. If only the frontend cache were bypassed (`force=true`) without also telling the backend to skip its cache (`?refresh=true`), the button would call the backend, which would just return its own up-to-5-minute-old cached response — making the refresh appear to do nothing. Both bypass flags are wired to fire together from the same user action.
+
+**Known limitation:** the backend cache has no eviction policy or maximum size. Acceptable at current scale (a handful of distinct handles), but would need an LRU-style eviction strategy if this were ever extended to support many concurrent distinct handles.
+
+**Refresh cooldown:** the frontend refresh button enforces a 15-second cooldown after use, purely as a UI-level guard against accidental spam-clicking. This is a courtesy layer, not a security control — see decision 11 below for why a real rate limiter was deliberately not built.
+
+---
+
+## 11. Email verification, token-based password reset, and API rate limiting were scoped out
+
+**Decision:** These three commonly-expected production features were considered, planned in detail, and deliberately not implemented.
+
+**Why:**
+- This project is built to demonstrate specific engineering skills for internship applications — external API integration, service-layer architecture, caching design, and frontend/backend coordination — rather than to be a production-ready system. Email verification, token-based password reset flows, and rate limiting are well-understood, thoroughly documented patterns; implementing them would cost real time without adding meaningfully to that specific signal.
+- **Password reset**, specifically, was reconsidered and simplified: rather than a token-based "forgot password" flow (which requires real email delivery to be meaningful, and this project deliberately doesn't send real emails), a simpler **"change password"** flow was considered instead — authenticated users proving identity via their current password, with no tokens or email involved. Even this was ultimately deprioritized in favor of other work, but the simplification itself is worth keeping: the token-based flow's whole justification (proving identity without a working session) doesn't hold much value in an app that can't actually deliver an email.
+- **Rate limiting** is partially, informally covered by the frontend's 15-second refresh cooldown (decision 10) — which prevents accidental spam-clicking through the UI, though it wouldn't stop someone calling the API directly (e.g. via Postman/curl) in a loop. That gap is accepted as an explicit tradeoff, not an oversight.
+
+**What would change this:** if this project ever moved toward being a real multi-user product rather than a portfolio piece, all three would become genuinely necessary — email verification and password reset for basic account security, and rate limiting (likely `express-rate-limit`, keyed by authenticated `userId` on the stats endpoints specifically, since that's where external-API abuse risk concentrates) to protect both the app and its upstream dependencies from abuse that isn't just accidental UI spam-clicking.
+
+---
