@@ -24,7 +24,9 @@ export const fetchLeetcodeStats = async (
       return;
     }
 
-    const stats = await getLeetcodeStats(profile.leetcodeHandle);
+    const skipCache = req.query.refresh === "true";
+    const { stats, cacheHit } = await getLeetcodeStats(profile.leetcodeHandle, skipCache);
+    res.setHeader("X-Cache", cacheHit ? "HIT" : "MISS");
 
     res.status(200).json({
       success: true,

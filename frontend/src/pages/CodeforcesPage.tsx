@@ -1,11 +1,11 @@
 import React from "react";
 import { useProfile } from "../context/ProfileContext";
-import { useCodeforcesStats } from "../hooks/useCodeforcesStats";
+import { useStats } from "../context/StatsContext";
 import CodeforcesSection from "../components/dashboard/CodeforcesSection";
 
 const CodeforcesPage: React.FC = () => {
   const { profile, loading: profileLoading } = useProfile();
-  const { stats, loading, error } = useCodeforcesStats(profile?.cfHandle);
+  const { cfStats: stats, cfLoading: loading, cfError: error } = useStats();
 
   if (profileLoading) {
     return (

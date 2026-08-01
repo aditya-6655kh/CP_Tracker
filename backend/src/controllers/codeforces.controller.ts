@@ -27,7 +27,9 @@ export const fetchCodeForcesStats = async (
       return;
     }
 
-    const stats = await getCodeForcesStats(profile.cfHandle);
+    const skipCache = req.query.refresh === "true";
+    const { stats, cacheHit } = await getCodeForcesStats(profile.cfHandle, skipCache);
+    res.setHeader("X-Cache", cacheHit ? "HIT" : "MISS");
     res.status(200).json({ success: true, data: stats });
   } catch (error) {
     if (error instanceof CodeforcesApiError) {

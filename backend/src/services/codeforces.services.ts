@@ -11,7 +11,9 @@ import {
   CodeforcesActivityDay,
   CodeforcesStreak,
 } from "../types/codeforces.types";
-import { resourceUsage } from "node:process";
+import { Cache } from "../lib/cache";
+
+const cfCache = new Cache<CodeforcesStats>(300); // 5 min TTL
 
 const CF_BASE_URL = "https://codeforces.com/api";
 
@@ -248,7 +250,13 @@ function computeSubmissionStats(
 // main things controller called
 export async function getCodeForcesStats(
   handle: string,
-): Promise<CodeforcesStats> {
+  skipCache = false,
+): Promise<{ stats: CodeforcesStats; cacheHit: boolean }> {
+  if (!skipCache) {
+    const cached = cfCache.get(handle);
+    if (cached) return { stats: cached, cacheHit: true };
+  }
+
   const [cfUser, ratingChange, submission] = await Promise.all([
     fetchUserInfo(handle),
     fetchUserRating(handle),
@@ -262,7 +270,7 @@ export async function getCodeForcesStats(
   }));
   const streak = computeStreak(activityMap);
 
-  return {
+  const stats: CodeforcesStats = {
     userInfo: transformUserInfo(cfUser),
     solvedCount: computeSolvedCount(submission),
     ratingHistory: transformRatingHistory(ratingChange),
@@ -270,4 +278,7 @@ export async function getCodeForcesStats(
     codeforcesActivity: activity,
     streak: streak,
   };
+
+  cfCache.set(handle, stats);
+  return { stats, cacheHit: false };
 }

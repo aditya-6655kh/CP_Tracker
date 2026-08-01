@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ProfileProvider } from "./context/ProfileContext";
+import { StatsProvider } from "./context/StatsContext";
 import DashboardLayout from "./components/layouts/DashboardLayout";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -48,7 +49,9 @@ const AppRoutes: React.FC = () => (
       element={
         <PrivateRoute>
           <ProfileProvider>
-            <DashboardLayout />
+            <StatsProvider>
+              <DashboardLayout />
+            </StatsProvider>
           </ProfileProvider>
         </PrivateRoute>
       }

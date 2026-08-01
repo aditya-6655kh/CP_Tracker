@@ -1,11 +1,11 @@
 import React from "react";
 import { useProfile } from "../context/ProfileContext";
-import { useLeetcodeStats } from "../hooks/useLeetcodeStats";
+import { useStats } from "../context/StatsContext";
 import LeetcodeSection from "../components/dashboard/LeetcodeSection";
 
 const LeetcodePage: React.FC = () => {
   const { profile, loading: profileLoading } = useProfile();
-  const { stats, loading, error } = useLeetcodeStats(profile?.leetcodeHandle);
+  const { lcStats: stats, lcLoading: loading, lcError: error } = useStats();
 
   if (profileLoading) {
     return (

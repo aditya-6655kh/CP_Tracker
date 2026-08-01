@@ -2,8 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useProfile } from "../context/ProfileContext";
-import { useLeetcodeStats } from "../hooks/useLeetcodeStats";
-import { useCodeforcesStats } from "../hooks/useCodeforcesStats";
+import { useStats } from "../context/StatsContext";
 import { getRankColor } from "../utilities/codeforces";
 import { ArrowRight, TrendingUp, ListChecks, Flame, Sparkles, Clock } from "lucide-react";
 import CombinedActivityStrip from "../components/dashboard/CombinedActivityStrip";
@@ -20,8 +19,14 @@ const DashboardPage: React.FC = () => {
   const { user } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
 
-  const codeforces = useCodeforcesStats(profile?.cfHandle);
-  const leetcode = useLeetcodeStats(profile?.leetcodeHandle);
+  const {
+    cfStats: cfStatsData,
+    lcStats: lcStatsData,
+    cfLoading,
+    lcLoading,
+    cfError,
+    lcError,
+  } = useStats();
 
   if (profileLoading) {
     return (
@@ -33,23 +38,23 @@ const DashboardPage: React.FC = () => {
     );
   }
 
-  const rankColor = getRankColor(codeforces.stats?.userInfo.rank ?? null);
+  const rankColor = getRankColor(cfStatsData?.userInfo.rank ?? null);
 
   const totalSolved =
-    (codeforces.stats?.solvedCount ?? 0) + (leetcode.stats?.solved.total ?? 0);
+    (cfStatsData?.solvedCount ?? 0) + (lcStatsData?.solved.total ?? 0);
 
-  const cfStreak = codeforces.stats?.streak.current ?? 0;
-  const lcStreak = leetcode.stats?.streak.current ?? 0;
+  const cfStreak = cfStatsData?.streak.current ?? 0;
+  const lcStreak = lcStatsData?.streak.current ?? 0;
   const bestStreak = Math.max(
     cfStreak,
     lcStreak,
   );
 
-  const anyData = codeforces.stats || leetcode.stats;
+  const anyData = cfStatsData || lcStatsData;
 
-  const mostRecentLcSubmission = leetcode.stats?.recentSubmissions?.[0];
+  const mostRecentLcSubmission = lcStatsData?.recentSubmissions?.[0];
 
-  const bestPlatform = (codeforces.stats?.solvedCount ?? 0) >= (leetcode.stats?.solved.total ?? 0) ? "Codeforces" : "LeetCode";
+  const bestPlatform = (cfStatsData?.solvedCount ?? 0) >= (lcStatsData?.solved.total ?? 0) ? "Codeforces" : "LeetCode";
 
   return (
     <div className="p-8 max-w-6xl">
@@ -99,12 +104,12 @@ const DashboardPage: React.FC = () => {
             <p className="font-mono text-sm text-slate-500">
               Not linked — click to add your handle.
             </p>
-          ) : codeforces.loading ? (
+          ) : cfLoading ? (
             <p className="font-mono text-sm text-slate-500 animate-pulse">
               Loading...
             </p>
-          ) : codeforces.error ? (
-            <p className="font-mono text-sm text-red-400">{codeforces.error}</p>
+          ) : cfError ? (
+            <p className="font-mono text-sm text-red-400">{cfError}</p>
           ) : (
             <div className="space-y-4">
               <div>
@@ -121,7 +126,7 @@ const DashboardPage: React.FC = () => {
                   className="font-mono text-3xl font-bold"
                   style={{ color: rankColor }}
                 >
-                  {codeforces.stats?.userInfo.rating ?? "—"}
+                  {cfStatsData?.userInfo.rating ?? "—"}
                 </p>
               </div>
               <div className="flex items-center gap-6">
@@ -130,7 +135,7 @@ const DashboardPage: React.FC = () => {
                     Solved
                   </span>
                   <p className="font-mono text-lg font-semibold text-white">
-                    {codeforces.stats?.solvedCount ?? 0}
+                    {cfStatsData?.solvedCount ?? 0}
                   </p>
                 </div>
                 <div>
@@ -167,12 +172,12 @@ const DashboardPage: React.FC = () => {
             <p className="font-mono text-sm text-slate-500">
               Not linked — click to add your handle.
             </p>
-          ) : leetcode.loading ? (
+          ) : lcLoading ? (
             <p className="font-mono text-sm text-slate-500 animate-pulse">
               Loading...
             </p>
-          ) : leetcode.error ? (
-            <p className="font-mono text-sm text-red-400">{leetcode.error}</p>
+          ) : lcError ? (
+            <p className="font-mono text-sm text-red-400">{lcError}</p>
           ) : (
             <div className="space-y-4">
               <div>
@@ -183,7 +188,7 @@ const DashboardPage: React.FC = () => {
                   </span>
                 </div>
                 <p className="font-mono text-3xl font-bold text-indigo-400">
-                  {leetcode.stats?.solved.total ?? 0}
+                  {lcStatsData?.solved.total ?? 0}
                 </p>
               </div>
               <div className="flex items-center gap-6">
@@ -192,8 +197,8 @@ const DashboardPage: React.FC = () => {
                     Rank
                   </span>
                   <p className="font-mono text-lg font-semibold text-white">
-                    {leetcode.stats?.ranking.globalRanking
-                      ? `#${leetcode.stats.ranking.globalRanking.toLocaleString()}`
+                    {lcStatsData?.ranking.globalRanking
+                      ? `#${lcStatsData.ranking.globalRanking.toLocaleString()}`
                       : "—"}
                   </p>
                 </div>
@@ -202,7 +207,7 @@ const DashboardPage: React.FC = () => {
                     Contest
                   </span>
                   <p className="font-mono text-lg font-semibold text-white">
-                    {leetcode.stats?.contest?.rating ?? "—"}
+                    {lcStatsData?.contest?.rating ?? "—"}
                   </p>
                 </div>
               </div>
@@ -210,8 +215,6 @@ const DashboardPage: React.FC = () => {
           )}
         </Link>
 
-        {/* Quick facts card — replaces empty dead space with small,
-            genuinely useful context pulled from data already in memory. */}
         <div className="bg-gradient-to-b from-[#15151F] to-[#0F0F16] border border-[#2D2D3F] rounded-xl p-6">
           <div className="flex items-center gap-2 mb-5">
             <Sparkles className="w-4 h-4 text-slate-500" />
@@ -239,7 +242,7 @@ const DashboardPage: React.FC = () => {
                 </div>
               )}
 
-              {codeforces.stats && leetcode.stats && (
+              {cfStatsData && lcStatsData && (
                 <div className="flex items-start gap-2.5">
                   <TrendingUp className="w-3.5 h-3.5 text-slate-500 mt-0.5 flex-shrink-0" />
                   <p className="font-mono text-xs text-slate-400 leading-relaxed">
@@ -249,7 +252,7 @@ const DashboardPage: React.FC = () => {
                 </div>
               )}
 
-              {!mostRecentLcSubmission && !(codeforces.stats && leetcode.stats) && (
+              {!mostRecentLcSubmission && !(cfStatsData && lcStatsData) && (
                 <p className="font-mono text-sm text-slate-500">
                   Keep solving — insights will show up here soon.
                 </p>
@@ -262,8 +265,8 @@ const DashboardPage: React.FC = () => {
       {/* Combined activity strip */}
       {anyData && (
         <CombinedActivityStrip
-          cfActivity={codeforces.stats?.codeforcesActivity ?? []}
-          lcActivity={leetcode.stats?.activity ?? []}
+          cfActivity={cfStatsData?.codeforcesActivity ?? []}
+          lcActivity={lcStatsData?.activity ?? []}
         />
       )}
     </div>

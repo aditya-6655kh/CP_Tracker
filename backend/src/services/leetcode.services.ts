@@ -9,6 +9,9 @@ import type {
   LCUserCalendar,
   LeetcodeActivityDay,
 } from "../types/leetcode.types";
+import { Cache } from "../lib/cache";
+
+const lcCache = new Cache<LeetcodeStats>(300); // 5 min TTL
 
 const LEETCODE_GRAPHQL_ENDPOINT = "https://leetcode.com/graphql";
 
@@ -217,7 +220,13 @@ function transformActivity(
 
 export async function getLeetcodeStats(
   username: string,
-): Promise<LeetcodeStats> {
+  skipCache = false,
+): Promise<{ stats: LeetcodeStats; cacheHit: boolean }> {
+  if (!skipCache) {
+    const cached = lcCache.get(username);
+    if (cached) return { stats: cached, cacheHit: true };
+  }
+
   const currentYear = new Date().getFullYear();
 
   const [
@@ -236,7 +245,7 @@ export async function getLeetcodeStats(
 
   const activity = transformActivity([prevYearCal, currentYearCal]);
 
-  return {
+  const stats: LeetcodeStats = {
     username: profile.username,
     solved: transformDifficultyBreakdown(profile.submitStats.acSubmissionNum),
     ranking: {
@@ -264,4 +273,7 @@ export async function getLeetcodeStats(
       totalActiveDays: currentYearCal?.totalActiveDays ?? 0,
     },
   };
+
+  lcCache.set(username, stats);
+  return { stats, cacheHit: false };
 }
