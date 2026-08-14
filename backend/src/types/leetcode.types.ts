@@ -6,7 +6,7 @@ export interface LCGraphQLResponse<T> {
 export interface LCSubmissionCount {
   difficulty: "Easy" | "Medium" | "Hard" | "All";
   count: number;
-  submission: number;
+  submissions: number;
 }
 
 export interface LCMatchedUser {
@@ -23,7 +23,7 @@ export interface LCMatchedUser {
 }
 
 export interface LCContestRating {
-  attendedContestCount: number;
+  attendedContestsCount: number;
   rating: number;
   globalRanking: number;
   totalParticipants: number;
@@ -69,7 +69,7 @@ export interface LeetcodeRanking {
 export interface LeetcodeContestStats {
   rating: number | null;
   globalRanking: number | null;
-  attendedContests: number;
+  attendedContest: number;
   topPercentage: number | null;
 }
 

@@ -35,7 +35,7 @@ const CombinedActivityStrip: React.FC<Props> = ({
   const lcMap = new Map(lcActivity.map((a) => [a.date, a.count]));
 
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  today.setUTCHours(0, 0, 0, 0);
 
   const days = [];
 

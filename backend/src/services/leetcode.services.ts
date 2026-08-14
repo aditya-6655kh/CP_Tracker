@@ -78,9 +78,9 @@ const RECENT_SUBMISSIONS_QUERY = `
   }
 `;
 
-const USER_CALENDAR_QUERY = `query userProfileCalendar($username: String!, $year: Int!) {
+const USER_CALENDAR_QUERY = `query userProfileCalendar($username: String!) {
   matchedUser(username: $username) {
-    userCalendar(year: $year) {
+    userCalendar {
       streak
       totalActiveDays
       submissionCalendar
@@ -157,7 +157,6 @@ async function fetchRecentSubmission(
 
 async function fetchUserCalendar(
   username: string,
-  year: number,
 ): Promise<LCUserCalendar | null> {
   try {
     const { data } = await axios.post<
@@ -166,12 +165,13 @@ async function fetchUserCalendar(
       }>
     >(
       LEETCODE_GRAPHQL_ENDPOINT,
-      { query: USER_CALENDAR_QUERY, variables: { username, year } },
+      { query: USER_CALENDAR_QUERY, variables: { username } },
       { headers: LC_HEADERS, timeout: 10000 },
     );
 
     return data.data?.matchedUser?.userCalendar ?? null;
-  } catch {
+  } catch (err) {
+    console.error("[fetchUserCalendar]", err instanceof Error ? err.message : err);
     return null;
   }
 }
@@ -227,23 +227,19 @@ export async function getLeetcodeStats(
     if (cached) return { stats: cached, cacheHit: true };
   }
 
-  const currentYear = new Date().getFullYear();
-
   const [
     profile,
     contestRanking,
     recentSubmission,
-    currentYearCal,
-    prevYearCal,
+    calendar,
   ] = await Promise.all([
     fetchUserProfile(username),
     fetchContestRating(username),
     fetchRecentSubmission(username),
-    fetchUserCalendar(username, currentYear),
-    fetchUserCalendar(username, currentYear - 1),
+    fetchUserCalendar(username),
   ]);
 
-  const activity = transformActivity([prevYearCal, currentYearCal]);
+  const activity = transformActivity([calendar]);
 
   const stats: LeetcodeStats = {
     username: profile.username,
@@ -256,7 +252,7 @@ export async function getLeetcodeStats(
       ? {
           rating: Math.round(contestRanking.rating),
           globalRanking: contestRanking.globalRanking,
-          attendedContests: contestRanking.attendedContestCount,
+          attendedContest: contestRanking.attendedContestsCount,
           topPercentage: contestRanking.topPercentage,
         }
       : null,
@@ -269,8 +265,8 @@ export async function getLeetcodeStats(
 
     activity,
     streak: {
-      current: currentYearCal?.streak ?? 0,
-      totalActiveDays: currentYearCal?.totalActiveDays ?? 0,
+      current: calendar?.streak ?? 0,
+      totalActiveDays: calendar?.totalActiveDays ?? 0,
     },
   };
 

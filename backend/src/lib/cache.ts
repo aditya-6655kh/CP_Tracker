@@ -6,7 +6,7 @@ interface CacheEntry<T> {
 export class Cache<T> {
   private store = new Map<string, CacheEntry<T>>();
   private defaultTtl: number;
-  private sweepTimer: NodeJS.Timeout | null = null;
+  private sweepTimer: ReturnType<typeof setInterval> | null = null;
 
   /**
    * @param defaultTtlSeconds  Default time-to-live in seconds (default 300 = 5 min)
@@ -24,7 +24,7 @@ export class Cache<T> {
     }, sweepIntervalSeconds * 1000);
 
     // allow the process to exit even if the timer is running
-    if (this.sweepTimer.unref) this.sweepTimer.unref();
+    if ((this.sweepTimer as any).unref) (this.sweepTimer as any).unref();
   }
 
   get(key: string): T | null {

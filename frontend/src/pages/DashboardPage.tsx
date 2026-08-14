@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useProfile } from "../context/ProfileContext";
 import { useStats } from "../context/StatsContext";
 import { getRankColor } from "../utilities/codeforces";
-import { ArrowRight, TrendingUp, ListChecks, Flame, Sparkles, Clock } from "lucide-react";
+import { ArrowRight, TrendingUp, ListChecks, Flame, Sparkles, Clock, RefreshCw } from "lucide-react";
 import CombinedActivityStrip from "../components/dashboard/CombinedActivityStrip";
 import { formatRelativeTime } from "../utilities/time";
 
@@ -26,7 +26,10 @@ const DashboardPage: React.FC = () => {
     lcLoading,
     cfError,
     lcError,
+    refreshAll,
   } = useStats();
+
+  const isRefreshing = cfLoading || lcLoading;
 
   if (profileLoading) {
     return (
@@ -60,10 +63,22 @@ const DashboardPage: React.FC = () => {
     <div className="p-8 max-w-6xl">
       {/* Hero */}
       <div className="mb-9">
-        <h1 className="font-mono text-2xl font-semibold text-white mb-3">
-          {getGreetings()}, {user?.name}
-          <span className="cursor-blink text-indigo-400">█</span>
-        </h1>
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="font-mono text-2xl font-semibold text-white">
+            {getGreetings()}, {user?.name}
+            <span className="cursor-blink text-indigo-400">█</span>
+          </h1>
+          {anyData && (
+            <button
+              onClick={refreshAll}
+              disabled={isRefreshing}
+              className="flex items-center gap-2 font-mono text-xs text-slate-400 hover:text-white bg-[#15151F] hover:bg-[#1E1E2E] border border-[#2D2D3F] hover:border-indigo-500/50 rounded-lg px-3 py-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+              {isRefreshing ? "Refreshing..." : "Refresh"}
+            </button>
+          )}
+        </div>
 
         {anyData ? (
           <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
