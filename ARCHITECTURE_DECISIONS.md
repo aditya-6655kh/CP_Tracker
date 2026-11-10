@@ -128,7 +128,7 @@ This document records the reasoning behind specific engineering tradeoffs made i
 
 **Known limitation:** the backend cache has no eviction policy or maximum size. Acceptable at current scale (a handful of distinct handles), but would need an LRU-style eviction strategy if this were ever extended to support many concurrent distinct handles.
 
-**Refresh cooldown:** the frontend refresh button enforces a 15-second cooldown after use, purely as a UI-level guard against accidental spam-clicking. This is a courtesy layer, not a security control — see decision 11 below for why a real rate limiter was deliberately not built.
+**Refresh guard:** the current frontend disables the refresh button while loading. Earlier documentation described a 15-second cooldown, but that timer is not implemented. Neither behavior is a security control — see decision 11 below for why a real rate limiter was deliberately not built.
 
 ---
 
@@ -139,8 +139,36 @@ This document records the reasoning behind specific engineering tradeoffs made i
 **Why:**
 - This project is built to demonstrate specific engineering skills for internship applications — external API integration, service-layer architecture, caching design, and frontend/backend coordination — rather than to be a production-ready system. Email verification, token-based password reset flows, and rate limiting are well-understood, thoroughly documented patterns; implementing them would cost real time without adding meaningfully to that specific signal.
 - **Password reset**, specifically, was reconsidered and simplified: rather than a token-based "forgot password" flow (which requires real email delivery to be meaningful, and this project deliberately doesn't send real emails), a simpler **"change password"** flow was considered instead — authenticated users proving identity via their current password, with no tokens or email involved. Even this was ultimately deprioritized in favor of other work, but the simplification itself is worth keeping: the token-based flow's whole justification (proving identity without a working session) doesn't hold much value in an app that can't actually deliver an email.
-- **Rate limiting** is partially, informally covered by the frontend's 15-second refresh cooldown (decision 10) — which prevents accidental spam-clicking through the UI, though it wouldn't stop someone calling the API directly (e.g. via Postman/curl) in a loop. That gap is accepted as an explicit tradeoff, not an oversight.
+- **Rate limiting** is not implemented. The refresh button is disabled during a request (decision 10), but this does not limit direct API requests. That gap is accepted as an explicit tradeoff, not an oversight.
 
 **What would change this:** if this project ever moved toward being a real multi-user product rather than a portfolio piece, all three would become genuinely necessary — email verification and password reset for basic account security, and rate limiting (likely `express-rate-limit`, keyed by authenticated `userId` on the stats endpoints specifically, since that's where external-API abuse risk concentrates) to protect both the app and its upstream dependencies from abuse that isn't just accidental UI spam-clicking.
 
 ---
+
+## 12. Codeforces weak-area analytics reuse the existing stats response
+
+**Decision:** Phase 4.1 computes topic metrics from the existing `CFSubmission[]`, adds `topicAnalytics` to `CodeforcesStats`, and caches the full response in the existing backend TTL cache and frontend `StatsContext`. There are no additional API calls or database changes. The partial problem catalog is deferred to recommendations.
+
+**Metric:** Count unique problems per tag using problem contest ID (falling back to submission contest ID) plus problem index. Any eligible accepted attempt marks a problem solved, independent of retry order. Tags are trimmed, deduplicated and combined across eligible attempts. An untagged accepted retry can resolve a previously tagged problem. Problems with no reliable identity or no tags across eligible attempts are excluded.
+
+**Eligibility:** The explicit judged-verdict allowlist is `OK`, `WRONG_ANSWER`, `TIME_LIMIT_EXCEEDED`, `MEMORY_LIMIT_EXCEEDED`, `RUNTIME_ERROR`, `COMPILATION_ERROR`, `PRESENTATION_ERROR`, `IDLENESS_LIMIT_EXCEEDED`, `CRASHED`, and `CHALLENGED`. Missing, pending, system, skipped and unknown outcomes do not count as failed attempts. This filtering affects only topic analytics; existing submission and activity statistics retain their semantics.
+
+**Classification:** At least five unique attempted problems and a solve rate below 50% flags a topic for practice. Smaller samples are insufficient data. Classification uses the unrounded rate; the UI rounds only for display. Weak topics sort first, followed by other eligible topics and sparse topics, using solve rate, sample size and tag name as deterministic tie breakers. Thresholds travel in the response so UI explanations match backend rules.
+
+**Limits:** This is an explainable heuristic, not a difficulty-adjusted assessment. Multi-tag counts overlap. The existing fetch is capped at 10,000 submissions, so coverage is disclosed and hitting that cap sets `possiblyTruncated`. Older accepted solutions may be missing. No extra pagination is introduced in this phase.
+
+**Frontend lifecycle:** The existing stats context remains the only fetch/cache owner. Codeforces requests carry a generation ID; superseded requests cannot overwrite data/errors/loading after handle changes, refreshes or unmount. Topic presentation adds no fetching effect. Existing response fields and LeetCode behavior are preserved.
+
+**Validation:** Node's built-in runner and the installed TypeScript compiler cover aggregation, caching, controller behavior, rendered topic states and request ordering. See `PHASE_4_1_VALIDATION.md` for browser acceptance checks. No testing dependency was added.
+
+## 13. Recommendations use a shared catalog and the existing personal stats pipeline
+
+**Decision:** Phase 4.2 finishes the catalog fetch service using `Cache<CFProblem[]>` with a 24-hour TTL and a shared in-flight promise. Recommendations extend `CodeforcesStats` and reuse Phase 4.1 analytics, current rating, submissions, the five-minute stats cache, and frontend `StatsContext`.
+
+**Why:** The public problemset is shared across users and changes less frequently than personal submissions. Fetching it for each handle or refresh would waste upstream requests. Database synchronization is unnecessary for this first deterministic recommender; the existing `Problem` model remains intact for future persistence. No dependency, migration or endpoint is added.
+
+**Ranking:** Recommend at most six rated programming problems within 200 points of the user rating rounded to 100 (target floor 800; missing rating defaults to 1000). Exclude known accepted problems and special problems. Prioritize the three weakest eligible topics, cycling through topics and sorting candidates by rating distance, lower rating and stable contest/index identity. Without weak topics, label recommendations as general practice. Empty targeted results remain empty rather than silently broadening scope.
+
+**Failure and refresh:** The catalog fetch has a 10-second timeout. Failure degrades only recommendations to an unavailable state; core stats still succeed. Personal refresh recomputes suggestions using fresh submissions but leaves the 24-hour catalog cache intact. This is an explicit exception to the personal two-layer cache bypass described in decision 10. The recommendation UI explains match reasons and warns that the 10,000-submission cap may omit older solves.
+
+**Validation:** Pure ranking, catalog validation/cache/concurrency, cross-handle cache behavior, refresh exclusions, fail-soft stats and React rendering are covered with the existing test stack. See `PHASE_4_2_VALIDATION.md` for exact policy and browser checks.

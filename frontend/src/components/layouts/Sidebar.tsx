@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { LayoutDashboard, User, LogOut, Trophy, Code2, ListChecks, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
@@ -18,7 +18,6 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const handleLogout = () => {
     logout();

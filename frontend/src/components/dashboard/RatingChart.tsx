@@ -72,7 +72,7 @@ const RatingChart: React.FC<Props> = ({ ratingHistory }) => {
               fontSize: "12px",
             }}
             labelStyle={{ color: "#fff", marginBottom: 4 }}
-            formatter={(value: number, _name: string, props: any) => [
+            formatter={(value, _name, props) => [
               `Rating: ${value} (rank ${props.payload.rank})`,
               props.payload.contestName,
             ]}

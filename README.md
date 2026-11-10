@@ -33,11 +33,23 @@ Built as a portfolio project to demonstrate production-quality backend architect
 
 ### Caching Layer 
 - **Backend** — in-memory TTL cache (5 min) per platform handle, avoids hammering the Codeforces/LeetCode APIs on every dashboard load. Bypassable via `?refresh=true` query param; responses include an `X-Cache: HIT | MISS` header for easy verification.
-- **Frontend** — `StatsContext` caches fetched stats for the session (resets on full page reload), so navigating between Overview/Codeforces/LeetCode pages doesn't refetch data already in memory. A manual "Refresh" button per platform page forces a real refetch (bypassing both cache layers) and has a 15-second cooldown to prevent spam-clicking.
+- **Frontend** — `StatsContext` caches fetched stats for the session (resets on full page reload), so navigating between Overview/Codeforces/LeetCode pages doesn't refetch data already in memory. A manual "Refresh" button per platform page forces a real refetch (bypassing both cache layers) and is disabled while loading. Codeforces requests ignore stale completions after refresh, handle changes, or unmount.
 
-### Phase 4 — Intelligence Layer (Planned)
-- Topic-wise weak area detection
-- Problem recommendations
+### Phase 4.1 — Codeforces weak-area analytics
+- Topic-level unique attempted/solved problems and problem solve rates, derived from the existing submission fetch.
+- Topics with at least 5 attempted problems and a solve rate below 50% are flagged for practice; smaller samples show "Insufficient data".
+- Retries count once per problem, and any accepted attempt marks it solved. Multi-tag problems count toward each topic.
+- Coverage includes fetched/excluded submission counts and a warning when the 10,000-submission cap is reached. These are practice signals, not difficulty-adjusted or lifetime skill assessments.
+- Uses the existing endpoint and both cache layers; no catalog sync, new network calls, schema changes, or dependencies.
+
+### Phase 4.2 — Codeforces problem recommendations
+- Up to six practice problems, prioritizing the three weakest eligible topics and excluding accepted problems found in fetched submissions.
+- Ratings within 200 points of the current rating rounded to the nearest 100 (minimum target 800); unrated users start at 1000. Users without weak topics receive labelled general practice.
+- Cards explain the topic match, rating, previous attempts, and link directly to Codeforces. No matches and temporary catalog failure have distinct states.
+- The public problem catalog uses the existing TTL cache for 24 hours, shared across handles, with concurrent fetches combined. Personal stats/recommendations retain the five-minute cache and session cache.
+- Refresh refetches personal submissions and recomputes suggestions against the shared catalog. Catalog failure preserves existing stats. No new dependencies, database changes, or catalog persistence are required.
+
+### Remaining Phase 4 — Planned
 - Goal tracking
 
 ### Deliberately Out of Scope
@@ -118,6 +130,13 @@ npm run dev
 | GET | `/api/auth/me` | Get current authenticated user |
 | GET | `/api/profile` | Get current user's profile + handles |
 | PATCH | `/api/profile` | Update one or more platform handles |
-| GET | `/api/stats/codeforces` | Full Codeforces stats (rating, solved, submissions, activity, streak). Supports `?refresh=true` to bypass the server-side cache. |
+| GET | `/api/stats/codeforces` | Codeforces stats, topic analytics, and problem recommendations. `?refresh=true` bypasses the personal stats cache; the shared problem catalog retains its 24-hour TTL. |
 | GET | `/api/stats/leetcode` | Full LeetCode stats (solved breakdown, ranking, contest, recent submissions, activity, streak). Supports `?refresh=true` to bypass the server-side cache. |
 | GET | `/api/health` | Basic health check |
+
+## Validation
+
+Run `npm test` and `npm run build` in both `backend` and `frontend`. Tests use Node's built-in test runner and the existing TypeScript compiler; they do not call external APIs or a database. Frontend tests cover static rendering and request ordering with a deterministic hook harness, not a browser DOM.
+
+See [PHASE_4_1_VALIDATION.md](./PHASE_4_1_VALIDATION.md) for coverage, limitations, and browser checks.
+See [PHASE_4_2_VALIDATION.md](./PHASE_4_2_VALIDATION.md) for recommendation rules, cache behavior, and acceptance checks.

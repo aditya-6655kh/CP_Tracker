@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { getCodeforcesStats, getLeetcodeStats } from "../api/stats.api";
@@ -34,11 +35,16 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({
   const [lcLoading, setLcLoading] = useState(false);
   const [cfError, setCfError] = useState("");
   const [lcError, setLcError] = useState("");
+  const cfRequestId = useRef(0);
 
   const fetchCf = useCallback(
     (force = false) => {
+      const requestId = ++cfRequestId.current;
+      if (!force) setCfStats(null);
       if (!profile?.cfHandle) {
         setCfStats(null);
+        setCfLoading(false);
+        setCfError("");
         return;
       }
 
@@ -46,13 +52,18 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({
       setCfError("");
 
       getCodeforcesStats(force)
-        .then(setCfStats)
-        .catch((err) =>
+        .then((stats) => {
+          if (requestId === cfRequestId.current) setCfStats(stats);
+        })
+        .catch((err) => {
+          if (requestId !== cfRequestId.current) return;
           setCfError(
             err.response?.data?.message ?? "Failed to load codeforces stats.",
-          ),
-        )
-        .finally(() => setCfLoading(false));
+          );
+        })
+        .finally(() => {
+          if (requestId === cfRequestId.current) setCfLoading(false);
+        });
     },
     [profile?.cfHandle],
   );
@@ -81,7 +92,9 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // initial fetch on mount / handle change
   useEffect(() => {
+    const requests = cfRequestId;
     fetchCf();
+    return () => { requests.current++; };
   }, [fetchCf]);
 
   useEffect(() => {

@@ -66,6 +66,48 @@ export interface CodeforcesStreak{
   max: number;
 }
 
+export interface CodeforcesTopicStats {
+  tag: string;
+  attemptedProblems: number;
+  solvedProblems: number;
+  /** Fraction from 0 to 1, calculated before display rounding. */
+  solveRate: number;
+  status: "weak" | "insufficient-data" | "not-flagged";
+}
+
+export interface CodeforcesTopicAnalytics {
+  topics: CodeforcesTopicStats[];
+  submissionsFetched: number;
+  excludedSubmissions: number;
+  possiblyTruncated: boolean;
+  minimumAttemptedProblems: number;
+  weakSolveRateThreshold: number;
+}
+
+export interface CodeforcesRecommendation {
+  id: string;
+  contestId: number;
+  index: string;
+  name: string;
+  rating: number;
+  tags: string[];
+  matchedWeakTags: string[];
+  previouslyAttempted: boolean;
+  url: string;
+}
+
+export interface CodeforcesRecommendations {
+  status: "available" | "unavailable";
+  mode: "weak-topics" | "general-practice";
+  targetRating: number;
+  minRating: number;
+  maxRating: number;
+  usedDefaultRating: boolean;
+  weakTags: string[];
+  historyPossiblyTruncated: boolean;
+  items: CodeforcesRecommendation[];
+}
+
 export interface CodeforcesStats {
   userInfo: CodeforcesUserInfo;
   solvedCount: number;
@@ -73,6 +115,8 @@ export interface CodeforcesStats {
   submissionStats: CodeforcesSubmissionStats;
   codeforcesActivity: CodeforcesActivityDay[];
   streak: CodeforcesStreak;
+  topicAnalytics: CodeforcesTopicAnalytics;
+  recommendations: CodeforcesRecommendations;
 }
 
 export interface LeetcodeDifficultyBreakdown {

@@ -19,7 +19,7 @@ const ProfileContext = createContext<ProfileContextTypes | null>(null);
 export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = useCallback(async () => {

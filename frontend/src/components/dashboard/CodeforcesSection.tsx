@@ -6,6 +6,8 @@ import LinkHandlePrompt from "./LinkHandlePrompt";
 import RatingChart from "./RatingChart";
 import ActivityHeatmap from "./ActivityHeatmap";
 import StreakCard from "./StreakCard";
+import CodeforcesWeakAreas from "./CodeforcesWeakAreas";
+import CodeforcesRecommendations from "./CodeforcesRecommendations";
 
 interface Props {
   handle: string | null;
@@ -185,6 +187,8 @@ const CodeforcesSection: React.FC<Props> = ({
         <div className="mt-4"><RatingChart ratingHistory={ratingHistory}/></div>
         <div className="mt-4"><ActivityHeatmap activity={codeforcesActivity}/></div>
       </div>
+      <CodeforcesWeakAreas analytics={stats.topicAnalytics} />
+      <CodeforcesRecommendations recommendations={stats.recommendations} />
     </div>
   );
 };

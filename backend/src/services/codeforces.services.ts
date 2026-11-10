@@ -10,12 +10,83 @@ import {
   CodeforcesSubmissionStats,
   CodeforcesActivityDay,
   CodeforcesStreak,
+  CodeforcesTopicAnalytics,
+  CodeforcesTopicStats,
 } from "../types/codeforces.types";
 import { Cache } from "../lib/cache";
+import { getCodeforcesRecommendations } from "./codeforces-recommendations.service";
 
 const cfCache = new Cache<CodeforcesStats>(300); // 5 min TTL
 
 const CF_BASE_URL = "https://codeforces.com/api";
+const SUBMISSION_LIMIT = 10000;
+const MINIMUM_TOPIC_PROBLEMS = 5;
+const WEAK_SOLVE_RATE_THRESHOLD = 0.5;
+// Only these judged outcomes contribute to the topic heuristic. In particular,
+// pending, skipped, system failures and unknown verdicts are not failed attempts.
+const TOPIC_VERDICTS = new Set([
+  "OK", "WRONG_ANSWER", "TIME_LIMIT_EXCEEDED", "MEMORY_LIMIT_EXCEEDED",
+  "RUNTIME_ERROR", "COMPILATION_ERROR", "PRESENTATION_ERROR",
+  "IDLENESS_LIMIT_EXCEEDED", "CRASHED", "CHALLENGED",
+]);
+
+export function computeTopicAnalytics(
+  submissions: readonly CFSubmission[],
+): CodeforcesTopicAnalytics {
+  const problems = new Map<string, { solved: boolean; tags: Set<string>; submissions: number }>();
+  let excludedSubmissions = 0;
+
+  for (const submission of submissions) {
+    const contestId = submission.problem.contestId ?? submission.contestId;
+    const index = submission.problem.index?.trim();
+    if (!TOPIC_VERDICTS.has(submission.verdict ?? "") ||
+        !Number.isInteger(contestId) || (contestId ?? 0) <= 0 || !index) {
+      excludedSubmissions++;
+      continue;
+    }
+
+    const key = `${contestId}:${index}`;
+    const problem = problems.get(key) ?? { solved: false, tags: new Set<string>(), submissions: 0 };
+    problem.submissions++;
+    problem.solved ||= submission.verdict === "OK";
+    const tags = (submission.problem.tags ?? []).map(tag => tag.trim()).filter(Boolean);
+    for (const tag of tags) problem.tags.add(tag);
+    // An untagged accepted retry still resolves earlier tagged attempts.
+    problems.set(key, problem);
+  }
+
+  const counts = new Map<string, { attemptedProblems: number; solvedProblems: number }>();
+  for (const problem of problems.values()) {
+    if (problem.tags.size === 0) excludedSubmissions += problem.submissions;
+    for (const tag of problem.tags) {
+      const topic = counts.get(tag) ?? { attemptedProblems: 0, solvedProblems: 0 };
+      topic.attemptedProblems++;
+      if (problem.solved) topic.solvedProblems++;
+      counts.set(tag, topic);
+    }
+  }
+
+  const topics: CodeforcesTopicStats[] = Array.from(counts, ([tag, counts]) => {
+    const solveRate = counts.solvedProblems / counts.attemptedProblems;
+    return {
+      tag, ...counts, solveRate,
+      status: counts.attemptedProblems < MINIMUM_TOPIC_PROBLEMS
+        ? "insufficient-data"
+        : solveRate < WEAK_SOLVE_RATE_THRESHOLD ? "weak" : "not-flagged",
+    };
+  });
+  const priority = { weak: 0, "not-flagged": 1, "insufficient-data": 2 };
+  topics.sort((a, b) => priority[a.status] - priority[b.status] ||
+    a.solveRate - b.solveRate || b.attemptedProblems - a.attemptedProblems ||
+    (a.tag < b.tag ? -1 : a.tag > b.tag ? 1 : 0));
+
+  return {
+    topics, submissionsFetched: submissions.length, excludedSubmissions,
+    possiblyTruncated: submissions.length >= SUBMISSION_LIMIT,
+    minimumAttemptedProblems: MINIMUM_TOPIC_PROBLEMS,
+    weakSolveRateThreshold: WEAK_SOLVE_RATE_THRESHOLD,
+  };
+}
 
 // custom error class
 export class CodeforcesApiError extends Error {
@@ -81,7 +152,7 @@ async function fetchUserStatus(handle: string): Promise<CFSubmission[]> {
   //full pagination will add later
   try {
     const { data } = await axios.get<CFApiResponse<CFSubmission[]>>(
-      `${CF_BASE_URL}/user.status?handle=${handle}&from=1&count=10000`,
+      `${CF_BASE_URL}/user.status?handle=${handle}&from=1&count=${SUBMISSION_LIMIT}`,
     );
 
     if (data.status === "FAILED") {
@@ -269,6 +340,8 @@ export async function getCodeForcesStats(
     count,
   }));
   const streak = computeStreak(activityMap);
+  const topicAnalytics = computeTopicAnalytics(submission);
+  const recommendations = await getCodeforcesRecommendations(submission, cfUser.rating ?? null, topicAnalytics);
 
   const stats: CodeforcesStats = {
     userInfo: transformUserInfo(cfUser),
@@ -277,6 +350,8 @@ export async function getCodeForcesStats(
     submissionStats: computeSubmissionStats(submission),
     codeforcesActivity: activity,
     streak: streak,
+    topicAnalytics,
+    recommendations,
   };
 
   cfCache.set(handle, stats);
