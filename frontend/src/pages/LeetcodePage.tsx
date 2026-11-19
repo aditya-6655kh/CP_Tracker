@@ -1,7 +1,7 @@
 import React from "react";
 import { RefreshCw } from "lucide-react";
-import { useProfile } from "../context/ProfileContext";
-import { useStats } from "../context/StatsContext";
+import { useProfile } from "../context/profile-context";
+import { useStats } from "../context/stats-context";
 import LeetcodeSection from "../components/dashboard/LeetcodeSection";
 
 const LeetcodePage: React.FC = () => {

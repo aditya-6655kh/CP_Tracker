@@ -16,10 +16,19 @@ import {
 import { Cache } from "../lib/cache";
 import { getCodeforcesRecommendations } from "./codeforces-recommendations.service";
 
-const cfCache = new Cache<CodeforcesStats>(300); // 5 min TTL
+export interface CodeforcesSnapshot {
+  stats: CodeforcesStats;
+  submissions: CFSubmission[];
+  fetchedAt: Date;
+}
+
+// Raw history stays server-side, alongside the same cached public stats.
+const cfCache = new Cache<CodeforcesSnapshot>(300);
+const pendingSnapshots = new Map<string, Promise<CodeforcesSnapshot>>();
 
 const CF_BASE_URL = "https://codeforces.com/api";
 const SUBMISSION_LIMIT = 10000;
+const REQUEST_TIMEOUT_MS = 10000;
 const MINIMUM_TOPIC_PROBLEMS = 5;
 const WEAK_SOLVE_RATE_THRESHOLD = 0.5;
 // Only these judged outcomes contribute to the topic heuristic. In particular,
@@ -104,7 +113,7 @@ async function fetchUserInfo(handle: string): Promise<CFUser> {
   try {
     const { data } = await axios.get<CFApiResponse<CFUser[]>>(
       `${CF_BASE_URL}/user.info?handles=${handle}`,
-      { timeout: 10000 },
+      { timeout: REQUEST_TIMEOUT_MS },
     );
 
     const user = data.result?.[0];
@@ -131,6 +140,7 @@ async function fetchUserRating(handle: string): Promise<CFRatingChange[]> {
   try {
     const { data } = await axios.get<CFApiResponse<CFRatingChange[]>>(
       `${CF_BASE_URL}/user.rating?handle=${handle}`,
+      { timeout: REQUEST_TIMEOUT_MS },
     );
 
     if (data.status === "FAILED") {
@@ -153,6 +163,7 @@ async function fetchUserStatus(handle: string): Promise<CFSubmission[]> {
   try {
     const { data } = await axios.get<CFApiResponse<CFSubmission[]>>(
       `${CF_BASE_URL}/user.status?handle=${handle}&from=1&count=${SUBMISSION_LIMIT}`,
+      { timeout: REQUEST_TIMEOUT_MS },
     );
 
     if (data.status === "FAILED") {
@@ -323,10 +334,36 @@ export async function getCodeForcesStats(
   handle: string,
   skipCache = false,
 ): Promise<{ stats: CodeforcesStats; cacheHit: boolean }> {
+  const { snapshot, cacheHit } = await getCodeforcesSnapshot(handle, skipCache);
+  return { stats: snapshot.stats, cacheHit };
+}
+
+export async function getCodeforcesSnapshot(
+  handle: string,
+  skipCache = false,
+): Promise<{ snapshot: CodeforcesSnapshot; cacheHit: boolean }> {
+  // Readers joining a refresh must not receive the previous cached snapshot.
+  const pending = pendingSnapshots.get(handle);
+  if (pending) return { snapshot: await pending, cacheHit: false };
   if (!skipCache) {
     const cached = cfCache.get(handle);
-    if (cached) return { stats: cached, cacheHit: true };
+    if (cached) return { snapshot: cached, cacheHit: true };
   }
+  const request = fetchSnapshot(handle);
+  pendingSnapshots.set(handle, request);
+  try {
+    const snapshot = await request;
+    cfCache.set(handle, snapshot);
+    return { snapshot, cacheHit: false };
+  } finally {
+    pendingSnapshots.delete(handle);
+  }
+}
+
+async function fetchSnapshot(handle: string): Promise<CodeforcesSnapshot> {
+  // Conservative coverage time: a request started before a deadline cannot
+  // establish that the entire goal period was observed.
+  const fetchedAt = new Date();
 
   const [cfUser, ratingChange, submission] = await Promise.all([
     fetchUserInfo(handle),
@@ -354,6 +391,5 @@ export async function getCodeForcesStats(
     recommendations,
   };
 
-  cfCache.set(handle, stats);
-  return { stats, cacheHit: false };
+  return { stats, submissions: submission, fetchedAt };
 }

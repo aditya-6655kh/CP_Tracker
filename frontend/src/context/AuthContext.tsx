@@ -1,16 +1,8 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import { AuthContext } from "./auth-context";
+import React, { useEffect, useState } from "react";
 import type { User } from "../types";
 import { getMe } from "../api/auth.api";
 
-interface AuthContext {
-  user: User | null;
-  token: string | null;
-  isLoading: boolean;
-  login: (token: string, user: User) => void;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthContext | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -61,9 +53,3 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     </AuthContext.Provider>
   );
 };
-
-export const useAuth = () => {
-    const context = useContext(AuthContext);
-    if(!context) throw new Error('use auth must be used within authprovider.');
-    return context;
-}

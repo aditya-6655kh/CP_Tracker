@@ -19,8 +19,9 @@ function colorForRating(rating: number): string {
 }
 
 const RatingClimb: React.FC = () => {
-  const [rating, setRating] = useState(800);
-  const [drawn, setDrawn] = useState(false);
+  const [prefersReduced] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const [rating, setRating] = useState(prefersReduced ? 2487 : 800);
+  const [drawn, setDrawn] = useState(prefersReduced);
 
   useEffect(() => {
     const start = 800;
@@ -28,14 +29,7 @@ const RatingClimb: React.FC = () => {
     const steps = 40;
     const stepDuration = 2200 / steps;
 
-    const prefersReduced = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    if (prefersReduced) {
-      setRating(end);
-      setDrawn(true);
-      return;
-    }
+    if (prefersReduced) return;
 
     let currentStep = 0;
     const interval = setInterval(() => {
@@ -51,7 +45,7 @@ const RatingClimb: React.FC = () => {
     }, stepDuration);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [prefersReduced]);
 
   const color = colorForRating(rating);
   return (

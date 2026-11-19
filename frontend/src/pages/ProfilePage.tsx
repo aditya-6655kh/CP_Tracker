@@ -1,22 +1,19 @@
-import React, {useState, useEffect} from "react";
+import { getApiErrorMessage } from "../utilities/api-error";
+import React, {useState} from "react";
 import { CheckCircle2 } from "lucide-react";
 import { updateProfile } from "../api/profile.api";
-import { useProfile } from "../context/ProfileContext";
+import { useProfile } from "../context/profile-context";
 
 const ProfilePage: React.FC = () => {
     const {profile, loading: profileLoading, refetch} = useProfile()
-    const [leetcodeHandle, setLeetcodeHandle] = useState('');
-    const [cfHandle, setCfHandle] =useState("");
+    const [leetcodeDraft, setLeetcodeHandle] = useState<string | null>(null);
+    const leetcodeHandle = leetcodeDraft ?? profile?.leetcodeHandle ?? '';
+    const [cfDraft, setCfHandle] = useState<string | null>(null);
+    const cfHandle = cfDraft ?? profile?.cfHandle ?? '';
     const [saving, setSaving] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState('');
 
-    useEffect(() => {
-      if(profile){
-        setCfHandle(profile.cfHandle ?? '');
-        setLeetcodeHandle(profile.leetcodeHandle ?? '');
-      }
-    }, [profile]);
 
     const handleSave = async () => {
         setError('');
@@ -28,9 +25,8 @@ const ProfilePage: React.FC = () => {
             await refetch();
             setSuccess(true);
             setTimeout(() => setSuccess(false), 3000);
-        }catch(err : any){
-            const errs = err.response?.data?.errors;
-            setError(errs ? errs.join(', ') : err.response?.data?.message ?? "Failed to save.");
+        }catch(err: unknown){
+            setError(getApiErrorMessage(err, "Failed to save."));
         }finally{
             setSaving(false);
         }

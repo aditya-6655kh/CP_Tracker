@@ -6,12 +6,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CodeforcesApiError = void 0;
 exports.computeTopicAnalytics = computeTopicAnalytics;
 exports.getCodeForcesStats = getCodeForcesStats;
+exports.getCodeforcesSnapshot = getCodeforcesSnapshot;
 const axios_1 = __importDefault(require("axios"));
 const cache_1 = require("../lib/cache");
 const codeforces_recommendations_service_1 = require("./codeforces-recommendations.service");
-const cfCache = new cache_1.Cache(300); // 5 min TTL
+// Raw history stays server-side, alongside the same cached public stats.
+const cfCache = new cache_1.Cache(300);
+const pendingSnapshots = new Map();
 const CF_BASE_URL = "https://codeforces.com/api";
 const SUBMISSION_LIMIT = 10000;
+const REQUEST_TIMEOUT_MS = 10000;
 const MINIMUM_TOPIC_PROBLEMS = 5;
 const WEAK_SOLVE_RATE_THRESHOLD = 0.5;
 // Only these judged outcomes contribute to the topic heuristic. In particular,
@@ -86,7 +90,7 @@ exports.CodeforcesApiError = CodeforcesApiError;
 // raw api fetchers
 async function fetchUserInfo(handle) {
     try {
-        const { data } = await axios_1.default.get(`${CF_BASE_URL}/user.info?handles=${handle}`, { timeout: 10000 });
+        const { data } = await axios_1.default.get(`${CF_BASE_URL}/user.info?handles=${handle}`, { timeout: REQUEST_TIMEOUT_MS });
         const user = data.result?.[0];
         if (!user) {
             throw new CodeforcesApiError("User not found in Codeforces response.", 404);
@@ -105,7 +109,7 @@ async function fetchUserInfo(handle) {
 }
 async function fetchUserRating(handle) {
     try {
-        const { data } = await axios_1.default.get(`${CF_BASE_URL}/user.rating?handle=${handle}`);
+        const { data } = await axios_1.default.get(`${CF_BASE_URL}/user.rating?handle=${handle}`, { timeout: REQUEST_TIMEOUT_MS });
         if (data.status === "FAILED") {
             throw new CodeforcesApiError(data.comment ?? "Failed to fetch user rating", 404);
         }
@@ -120,7 +124,7 @@ async function fetchUserRating(handle) {
 async function fetchUserStatus(handle) {
     //full pagination will add later
     try {
-        const { data } = await axios_1.default.get(`${CF_BASE_URL}/user.status?handle=${handle}&from=1&count=${SUBMISSION_LIMIT}`);
+        const { data } = await axios_1.default.get(`${CF_BASE_URL}/user.status?handle=${handle}&from=1&count=${SUBMISSION_LIMIT}`, { timeout: REQUEST_TIMEOUT_MS });
         if (data.status === "FAILED") {
             throw new CodeforcesApiError(data.comment ?? "Failed to fetch user status", 404);
         }
@@ -253,11 +257,34 @@ function computeSubmissionStats(submissions) {
 }
 // main things controller called
 async function getCodeForcesStats(handle, skipCache = false) {
+    const { snapshot, cacheHit } = await getCodeforcesSnapshot(handle, skipCache);
+    return { stats: snapshot.stats, cacheHit };
+}
+async function getCodeforcesSnapshot(handle, skipCache = false) {
+    // Readers joining a refresh must not receive the previous cached snapshot.
+    const pending = pendingSnapshots.get(handle);
+    if (pending)
+        return { snapshot: await pending, cacheHit: false };
     if (!skipCache) {
         const cached = cfCache.get(handle);
         if (cached)
-            return { stats: cached, cacheHit: true };
+            return { snapshot: cached, cacheHit: true };
     }
+    const request = fetchSnapshot(handle);
+    pendingSnapshots.set(handle, request);
+    try {
+        const snapshot = await request;
+        cfCache.set(handle, snapshot);
+        return { snapshot, cacheHit: false };
+    }
+    finally {
+        pendingSnapshots.delete(handle);
+    }
+}
+async function fetchSnapshot(handle) {
+    // Conservative coverage time: a request started before a deadline cannot
+    // establish that the entire goal period was observed.
+    const fetchedAt = new Date();
     const [cfUser, ratingChange, submission] = await Promise.all([
         fetchUserInfo(handle),
         fetchUserRating(handle),
@@ -281,7 +308,6 @@ async function getCodeForcesStats(handle, skipCache = false) {
         topicAnalytics,
         recommendations,
     };
-    cfCache.set(handle, stats);
-    return { stats, cacheHit: false };
+    return { stats, submissions: submission, fetchedAt };
 }
 //# sourceMappingURL=codeforces.services.js.map

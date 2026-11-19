@@ -1,7 +1,7 @@
 import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { LayoutDashboard, User, LogOut, Trophy, Code2, ListChecks, X } from "lucide-react";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/auth-context";
 
 const navItems = [
   { label: "Overview", to: "/dashboard", icon: LayoutDashboard },

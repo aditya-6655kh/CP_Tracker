@@ -20,21 +20,28 @@ export const Register = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "Password must be at least 8 characters long." });
         }
         
-        const existingUser = await prisma.user.findUnique({ where: { email } });
+        const normalizedEmail = email.toLowerCase().trim();
+        const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
         if (existingUser) {
             return res.status(400).json({ message: "User already exists." });
         }
 
+        const secret = process.env.JWT_SECRET;
+        if (!secret) return res.status(500).json({ message: "Internal server error" });
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = await prisma.user.create({
             data: {
                 name: name.trim(),
-                email: email.toLowerCase().trim(),
+                email: normalizedEmail,
                 password: hashedPassword,
+                profile: { create: {} },
             }
         });
 
         return res.status(201).json({
+            success: true,
+            token: jwt.sign({ userId: user.id }, secret, { expiresIn: "7d", algorithm: "HS256" }),
+            user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt, updatedAt: user.updatedAt },
             id: user.id,
             email: user.email, 
             name: user.name,
@@ -80,6 +87,8 @@ export const Login = async (req: Request, res: Response) => {
         });
 
         return res.status(200).json({
+            success: true,
+            user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt, updatedAt: user.updatedAt },
             id: user.id,
             email: user.email,
             name: user.name,

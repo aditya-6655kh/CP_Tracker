@@ -49,8 +49,12 @@ Built as a portfolio project to demonstrate production-quality backend architect
 - The public problem catalog uses the existing TTL cache for 24 hours, shared across handles, with concurrent fetches combined. Personal stats/recommendations retain the five-minute cache and session cache.
 - Refresh refetches personal submissions and recomputes suggestions against the shared catalog. Catalog failure preserves existing stats. No new dependencies, database changes, or catalog persistence are required.
 
-### Remaining Phase 4 — Planned
-- Goal tracking
+### Phase 4.3 — Codeforces goals
+- Create a goal on Overview with a target of 1–1,000 unique problems and a future deadline within one year; edit or delete it there.
+- Goals start when created and remain attached to that Codeforces handle, even after profile changes. Each distinct problem accepted during the goal window counts once, including re-solves of previously solved problems. The deadline is exclusive; the editor uses local time and the API stores UTC.
+- Progress shows active, completed, expired or unknown states. Incomplete history shows a lower bound; an API outage shows unavailable progress without losing the goal. Expired goals cannot be edited.
+- Goal definitions are private, authenticated PostgreSQL records. Progress is derived from the existing five-minute Codeforces snapshot and 10,000-submission history, with concurrent stats/goal fetches combined. It is not a permanent completion ledger.
+- Refresh progress bypasses the personal snapshot cache; the shared 24-hour problem catalog remains cached. No new dependencies.
 
 ### Deliberately Out of Scope
 - **Email verification, token-based password reset, and API rate limiting** were considered and scoped out. This is a portfolio project meant to demonstrate specific engineering skills (API integration, caching, service architecture) rather than a production system — these are well-understood, standard patterns that wouldn't add meaningfully to that signal. See [`ARCHITECTURE_DECISIONS.md`](./ARCHITECTURE_DECISIONS.md) for the full reasoning.
@@ -106,8 +110,10 @@ cp-tracker/
 cd backend
 npm install
 # Configure .env with DATABASE_URL and JWT_SECRET
-npx prisma migrate dev
+npx prisma migrate deploy
+npx prisma generate
 npm run dev
+# Production: npm run build && npm start
 ```
 
 ### Frontend
@@ -132,6 +138,10 @@ npm run dev
 | PATCH | `/api/profile` | Update one or more platform handles |
 | GET | `/api/stats/codeforces` | Codeforces stats, topic analytics, and problem recommendations. `?refresh=true` bypasses the personal stats cache; the shared problem catalog retains its 24-hour TTL. |
 | GET | `/api/stats/leetcode` | Full LeetCode stats (solved breakdown, ranking, contest, recent submissions, activity, streak). Supports `?refresh=true` to bypass the server-side cache. |
+| GET | `/api/goals` | Current user's goals and progress. `?refresh=true` refreshes their saved Codeforces handles. |
+| POST | `/api/goals` | Create a goal with `targetCount` and `deadline` (ISO UTC); requires a linked Codeforces handle. |
+| PATCH | `/api/goals/:id` | Edit the owner's target and/or future deadline before the goal ends. |
+| DELETE | `/api/goals/:id` | Delete the owner's goal. |
 | GET | `/api/health` | Basic health check |
 
 ## Validation
@@ -140,3 +150,4 @@ Run `npm test` and `npm run build` in both `backend` and `frontend`. Tests use N
 
 See [PHASE_4_1_VALIDATION.md](./PHASE_4_1_VALIDATION.md) for coverage, limitations, and browser checks.
 See [PHASE_4_2_VALIDATION.md](./PHASE_4_2_VALIDATION.md) for recommendation rules, cache behavior, and acceptance checks.
+See [PHASE_4_3_VALIDATION.md](./PHASE_4_3_VALIDATION.md) for goal semantics, migration, opt-in database tests and browser acceptance checks. Registration and login now both return `{ success, token, user }` for the existing auth context; registration creates its profile atomically. Frontend API configuration reads `VITE_API_URL`.

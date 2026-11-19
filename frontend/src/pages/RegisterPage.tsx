@@ -1,7 +1,8 @@
+import { getApiErrorMessage } from "../utilities/api-error";
 import React, { useState } from "react";
 import { Trophy, Eye, EyeOff } from "lucide-react";
 import { registerUser } from "../api/auth.api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/auth-context";
 import { Link, useNavigate } from "react-router-dom";
 
 const RegisterPage: React.FC = () => {
@@ -23,9 +24,9 @@ const RegisterPage: React.FC = () => {
       const data = await registerUser({ name, email, password });
       login(data.token, data.user);
       navigate("/dashboard");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(
-        err.response?.data?.message ?? "Registration failed. Please try again.",
+        getApiErrorMessage(err, "Registration failed. Please try again."),
       );
     } finally {
       setLoading(false);

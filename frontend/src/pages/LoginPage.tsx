@@ -1,8 +1,9 @@
+import { getApiErrorMessage } from "../utilities/api-error";
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Trophy, Eye, EyeOff } from "lucide-react";
 import { loginUser } from "../api/auth.api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/auth-context";
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -23,9 +24,9 @@ const LoginPage: React.FC = () => {
       const data = await loginUser({ email, password });
       login(data.token, data.user);
       navigate("/dashboard");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(
-        err.response?.data?.message ?? "Login failed. Please try again.",
+        getApiErrorMessage(err, "Login failed. Please try again."),
       );
     } finally {
       setLoading(false);

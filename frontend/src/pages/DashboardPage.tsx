@@ -1,12 +1,13 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { useProfile } from "../context/ProfileContext";
-import { useStats } from "../context/StatsContext";
+import { useAuth } from "../context/auth-context";
+import { useProfile } from "../context/profile-context";
+import { useStats } from "../context/stats-context";
 import { getRankColor } from "../utilities/codeforces";
 import { ArrowRight, TrendingUp, ListChecks, Flame, Sparkles, Clock, RefreshCw } from "lucide-react";
 import CombinedActivityStrip from "../components/dashboard/CombinedActivityStrip";
 import { formatRelativeTime } from "../utilities/time";
+import GoalsSection from "../components/dashboard/GoalsSection";
 
 function getGreetings(): string {
   const hour = new Date().getHours();
@@ -278,6 +279,7 @@ const DashboardPage: React.FC = () => {
       </div>
 
       {/* Combined activity strip */}
+      <GoalsSection />
       {anyData && (
         <CombinedActivityStrip
           cfActivity={cfStatsData?.codeforcesActivity ?? []}

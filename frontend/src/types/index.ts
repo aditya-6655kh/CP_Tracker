@@ -28,6 +28,27 @@ export interface ApiResponse<T> {
   error?: string[];
 }
 
+export interface GoalInput {
+  targetCount: number;
+  deadline: string;
+}
+
+export interface Goal {
+  id: string;
+  cfHandle: string;
+  targetCount: number;
+  startsAt: string;
+  deadline: string;
+  progress: {
+    solvedCount: number | null;
+    percent: number | null;
+    status: "active" | "completed" | "expired" | "unknown";
+    checkedAt: string | null;
+    historyIncomplete: boolean;
+    message: string | null;
+  };
+}
+
 export interface CodeforcesUserInfo {
   handle: string;
   rating: number | null;

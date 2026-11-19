@@ -172,3 +172,15 @@ This document records the reasoning behind specific engineering tradeoffs made i
 **Failure and refresh:** The catalog fetch has a 10-second timeout. Failure degrades only recommendations to an unavailable state; core stats still succeed. Personal refresh recomputes suggestions using fresh submissions but leaves the 24-hour catalog cache intact. This is an explicit exception to the personal two-layer cache bypass described in decision 10. The recommendation UI explains match reasons and warns that the 10,000-submission cap may omit older solves.
 
 **Validation:** Pure ranking, catalog validation/cache/concurrency, cross-handle cache behavior, refresh exclusions, fail-soft stats and React rendering are covered with the existing test stack. See `PHASE_4_2_VALIDATION.md` for exact policy and browser checks.
+
+## 14. Goals persist definitions and derive progress from the shared Codeforces snapshot
+
+**Decision:** Add one owner-scoped Goal table and authenticated CRUD routes. Bind each goal to the profile's Codeforces handle and server start time at creation. Count unique accepted problems inside its time window, including re-solves; editing changes only the target and future deadline. Ended goals cannot be extended.
+
+**Why:** Persisting definitions makes goals survive reloads without adding a submission sync, scheduler or separate progress cache. Existing Codeforces types and the five-minute `Cache<T>` now hold a server-only snapshot with public stats, submissions and fetch time. Both stats and goals reuse it and combine concurrent requests. Personal goal records are never shared between users or cached by handle. The public stats contract and shared catalog TTL are preserved.
+
+**Limits:** Progress is evidence from the latest fetched history, not an immutable completion record. The 10,000-submission cap can omit part of a long-running or old goal. The UI reports lower bounds and unknown status rather than treating missing evidence as failure. A snapshot fetched before an ended goal's deadline cannot prove failure; refresh is needed. API failure leaves the definition visible with unavailable progress. Handle changes do not rewrite old goals.
+
+**Frontend:** A focused `useGoals` hook owns dashboard CRUD/list state and ignores superseded reads. Existing `StatsContext` remains the stats cache owner; successful Codeforces refresh triggers goal-list recomputation. A dedicated goal refresh also covers handles no longer linked to the profile. No new dependency or global context is introduced.
+
+**Validation:** Existing Node/TypeScript/React tools cover progress rules, ownership, caching, request ordering and rendered states. An opt-in local PostgreSQL HTTP test verifies the complete auth/CRUD flow using temporary fixture users. See `PHASE_4_3_VALIDATION.md`.
